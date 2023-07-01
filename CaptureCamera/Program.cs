@@ -1,13 +1,20 @@
-using CaptureCamera.Data;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
+using CaptureCamera.Extensions;
+using CaptureCamera.Interfaces;
+using CaptureCamera.Services;
+using CaptureCamera.Settings;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var settings = builder.Services.ConfigureAppSettings<AppSettings>(builder.Configuration);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<IFileStorage, FileStorage>();
 
 var app = builder.Build();
 

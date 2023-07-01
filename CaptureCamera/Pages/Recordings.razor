@@ -1,0 +1,96 @@
+﻿@page "/recordings"
+@using CaptureCamera.Models
+@using CaptureCamera.Interfaces
+@using CaptureCamera.Settings
+@using CaptureCamera.Extensions
+@using System.IO
+
+@inject IFileStorage Storage
+@inject AppSettings Settings
+
+
+<PageTitle>Recordings</PageTitle>
+
+<h1>Recordings</h1>
+
+<p>This page allows to browse recordings stored in @Settings.Storage.DocumentContainer container of local blob storage. Don't forget to start '<a href="https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite">Azurite Emulator</a>.</p>
+
+@if (_folder == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p><button class="btn btn-primary" @onclick="() => OpenFolder(_root)" title="Open root folder"><span class="oi oi-home" aria-hidden="true"></span></button> @CurrentFolderPath</p>
+
+    if (_previewBase64 == null)
+    {
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Length</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (_folder != null)
+            {
+                foreach (var sub in _folder.Folders)
+                {
+                    <tr>
+                        <td>@sub.Name</td>
+                        <td> - </td>
+                        <td>@($"{sub.Files.Count} files, {sub.Folders.Count} folders")</td>
+                        <td><button class="btn btn-primary" @onclick="() => OpenFolder(sub)">Open</button></td>
+                    </tr>
+                }
+                foreach (var file in _folder.Files)
+                {
+                    <tr>
+                        <td>@file.FileName</td>
+                        <td>@file.ContentType</td>
+                        <td>@file.GetFileSize()</td>
+                        <td><button class="btn btn-primary" @onclick="() => ViewFile(file)">View</button></td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p><button class="btn btn-primary" @onclick="() => _previewBase64 = null" title="Open root folder">Close Preview</button></p>
+        <img src="@_previewBase64">
+    }
+}
+
+@code {
+    private FolderDto? _root;
+    private FolderDto? _folder;
+    private string? _previewBase64;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _root = await Storage.GetFolder(string.Empty);
+        _folder = _root;
+    }
+
+    private void OpenFolder(FolderDto? folder)
+    {
+        _folder = folder;
+    }
+
+    private async Task ViewFile(FileDto file)
+    {
+        using var ms = new MemoryStream();
+        await Storage.Download(file, ms);
+        var b64String = Convert.ToBase64String(ms.ToArray());
+        _previewBase64= $"data:image/png;base64,{b64String}";
+    }
+
+    private string CurrentFolderPath => _folder == _root || _folder == null
+        ? string.Empty
+        : string.IsNullOrWhiteSpace(_folder.Path) ? $"/{_folder.Name}" : $"/{_folder.Path}/{_folder.Name}";
+}

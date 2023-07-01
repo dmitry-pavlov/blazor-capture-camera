@@ -1,4 +1,9 @@
-namespace CaptureCamera.Data
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using CaptureCamera.Models;
+
+namespace CaptureCamera.Services
 {
     public class WeatherForecastService
     {
