@@ -1,4 +1,9 @@
 ﻿@page "/"
+@using BlazorCameraStreamer
+@using CaptureCamera.Interfaces
+@using CaptureCamera.Models
+
+@inject IFileStorage Storage
 
 <PageTitle>Index</PageTitle>
 
@@ -7,3 +12,43 @@
 Welcome to your new app.
 
 <SurveyPrompt Title="How is Blazor working for you?" />
+
+
+<CameraStreamer @ref="_cameraStreamerReference"
+                Width="1920"
+                Height="1080"
+                OnRendered="OnRenderedHandler"
+                OnFrame="OnFrameHandler"
+                Style="width: 480px; height: 270px;"
+                CameraID="@CameraId"
+                Autostart />
+                
+@code
+{
+    CameraStreamer _cameraStreamerReference = default!;
+
+    public string? CameraId = null;
+
+    private async void OnRenderedHandler()
+    {
+    // Check camera-access or ask user, if it's not allowed currently
+        if (await _cameraStreamerReference.GetCameraAccessAsync())
+        {
+    // Reloading re-initializes the stream and starts the
+    // stream automatically if the Autostart parameter is set
+            await _cameraStreamerReference.ReloadAsync();
+
+    // If Autostart is not set, you have to manually start the stream again
+    /* await CameraStreamerReference.StartAsync(); */
+        }
+    }
+
+    private async Task OnFrameHandler(string data)
+    {
+        // Remove the suffix added by javascript
+        data = data[(data.IndexOf(',') + 1)..];
+
+        FileDto frame = new FileDto { Directory = "TMP", FileName = $"{DateTime.UtcNow:s}", ContentType = "image/bmp" };
+        var file = await Storage.Upload(frame, Convert.FromBase64String(data));
+    }
+}
