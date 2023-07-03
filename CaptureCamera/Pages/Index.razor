@@ -1,54 +1,97 @@
 ﻿@page "/"
-@using BlazorCameraStreamer
-@using CaptureCamera.Interfaces
 @using CaptureCamera.Models
+@using CaptureCamera.Components
+@using CaptureCamera.Services
 
-@inject IFileStorage Storage
+@inject VideoRecorder Recorder
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Capture Camera</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container">
+    <div class="row">
+        <div class="col-6">
+            <div class="alert alert-secondary mt-4">
+                <strong>Survey ID: @_surveyId</strong><br />
+                Please take a brief survey. Click Record to start capturing from your camera. Once you click Stop capturing from camera stops and video is stored to Recording.
+            </div>
+            @if (_currentStep != null)
+            {
+                <div>
+                    <h3>@_currentStep.Id @_currentStep.Question</h3>
+                    <InputTextArea @bind-Value="@_currentStep.Answer" rows="4" style="width: 100%"></InputTextArea>
+                </div>
+                <div>
+                    <button class="btn btn-primary" @onclick="NextQuestion">Next Question</button>
+                </div>
+            }
+        </div>
+        <div class="col-6">
+            <p>Frames captured: @_framesCaptured </p>
+            <CameraStreamer @ref="_cameraRef"
+                            Id="@_surveyId"
+                            Width="640"
+                            Height="480"
+                            OnFrame="OnFrameCaptured" />
 
-Welcome to your new app.
+            <div>
+                <button class="btn btn-primary" @onclick="Start"><span class="oi oi-media-record" aria-hidden="true"></span> Record</button>
+                <button class="btn btn-primary" @onclick="Stop"><span class="oi oi-media-stop" aria-hidden="true"></span> Stop</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
-
-
-<CameraStreamer @ref="_cameraStreamerReference"
-                Width="1920"
-                Height="1080"
-                OnRendered="OnRenderedHandler"
-                OnFrame="OnFrameHandler"
-                Style="width: 480px; height: 270px;"
-                CameraID="@CameraId"
-                Autostart />
-                
 @code
 {
-    CameraStreamer _cameraStreamerReference = default!;
+    private CameraStreamer? _cameraRef;
 
-    public string? CameraId = null;
+    private string _surveyId = string.Empty;
 
-    private async void OnRenderedHandler()
+    private Survey? _survey;
+
+    private Survey.Step? _currentStep;
+    private int _framesCaptured;
+
+    protected override void OnInitialized() => NewSurvey();
+
+    private async void Start()
     {
-    // Check camera-access or ask user, if it's not allowed currently
-        if (await _cameraStreamerReference.GetCameraAccessAsync())
-        {
-    // Reloading re-initializes the stream and starts the
-    // stream automatically if the Autostart parameter is set
-            await _cameraStreamerReference.ReloadAsync();
+        if (_cameraRef != null) await _cameraRef.StartAsync();
+    }
 
-    // If Autostart is not set, you have to manually start the stream again
-    /* await CameraStreamerReference.StartAsync(); */
+    private async void Stop()
+    {
+        if (_cameraRef != null) await _cameraRef.StopAsync();
+
+        if (_survey != null)
+        {
+            var file = await Recorder.HandleCapturedFramesFrom(_survey);
         }
     }
 
-    private async Task OnFrameHandler(string data)
+    private Task OnFrameCaptured(string data)
     {
-        // Remove the suffix added by javascript
-        data = data[(data.IndexOf(',') + 1)..];
-
-        FileDto frame = new FileDto { Directory = "TMP", FileName = $"{DateTime.UtcNow:s}", ContentType = "image/bmp" };
-        var file = await Storage.Upload(frame, Convert.FromBase64String(data));
+        if (_survey != null)
+        {
+            // Remove the suffix added by javascript
+            data = data[(data.IndexOf(',') + 1)..];
+            _survey.AddFrame(_currentStep?.Id, Convert.FromBase64String(data));
+            _framesCaptured = _survey.Frames.Count;
+        }
+        return Task.CompletedTask;
     }
+
+    private void NewSurvey()
+    {
+        _survey = new Survey();
+        _currentStep = _survey.Steps.First();
+        _surveyId = _survey.Id.ToString();
+        _framesCaptured = _survey.Frames.Count;
+    }
+
+    private void NextQuestion() => _currentStep = _survey == null
+        ? null
+        : _currentStep == null
+            ? _survey.Steps.First()
+            : _survey.Steps.FirstOrDefault(step => step.Id == _currentStep.Id + 1) ?? _currentStep;
 }

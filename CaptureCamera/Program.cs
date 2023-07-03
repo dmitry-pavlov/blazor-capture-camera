@@ -13,7 +13,7 @@ var settings = builder.Services.ConfigureAppSettings<AppSettings>(builder.Config
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor().AddHubOptions(o => o.MaximumReceiveMessageSize = 100_000_000);
-builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<VideoRecorder>();
 builder.Services.AddScoped<IFileStorage, FileStorage>();
 
 var app = builder.Build();

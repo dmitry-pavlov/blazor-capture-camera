@@ -52,7 +52,10 @@ else
                         <td>@file.FileName</td>
                         <td>@file.ContentType</td>
                         <td>@file.GetFileSize()</td>
-                        <td><button class="btn btn-primary" @onclick="() => ViewFile(file)">View</button></td>
+                        <td>
+                            <button class="btn btn-primary" @onclick="() => ViewFile(file)">View</button>
+                            <button class="btn btn-primary" @onclick="() => DeleteFile(file)">Delete</button>
+                        </td>
                     </tr>
                 }
             }
@@ -61,6 +64,7 @@ else
     }
     else
     {
+        <p>@_previewFileName</p>
         <p><button class="btn btn-primary" @onclick="() => _previewBase64 = null" title="Open root folder">Close Preview</button></p>
         <img src="@_previewBase64">
     }
@@ -70,6 +74,7 @@ else
     private FolderDto? _root;
     private FolderDto? _folder;
     private string? _previewBase64;
+    private string? _previewFileName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,17 +82,23 @@ else
         _folder = _root;
     }
 
-    private void OpenFolder(FolderDto? folder)
-    {
-        _folder = folder;
-    }
+    private void OpenFolder(FolderDto? folder) => _folder = folder;
 
     private async Task ViewFile(FileDto file)
     {
         using var ms = new MemoryStream();
         await Storage.Download(file, ms);
         var b64String = Convert.ToBase64String(ms.ToArray());
-        _previewBase64= $"data:image/png;base64,{b64String}";
+        _previewBase64 = $"data:image/png;base64,{b64String}";
+        _previewFileName = file.FileName;
+    }
+
+    private async Task DeleteFile(FileDto file)
+    {
+        if (await Storage.Delete(file))
+        {
+            if (_folder != null) _folder.Files = _folder.Files.Where(x => x.FileName != file.FileName).ToList();
+        }
     }
 
     private string CurrentFolderPath => _folder == _root || _folder == null

@@ -1,0 +1,78 @@
+﻿@using System.Runtime.InteropServices.JavaScript
+
+@implements IAsyncDisposable
+
+@inject IJSRuntime JsRuntime;
+
+<video @ref="_videoRef" class="camera-placeholder" id="@Id-video" muted playsinline />
+<canvas @ref="_canvasRef" class="d-none" id="@Id-canvas" width="@Width" height="@Height" />
+
+@code {
+
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [Parameter] public int Width { get; set; }
+
+    [Parameter] public int Height { get; set; }
+
+    [Parameter] public EventCallback<string> OnFrame { get; set; }
+
+    private ElementReference _videoRef;
+    private ElementReference _canvasRef;
+
+    private Lazy<Task<IJSObjectReference>>? _moduleTask;
+
+    private bool _isInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await ReloadAsync();
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    public async Task ReloadAsync()
+    {
+        if (_isInitialized) await DisposeAsync();
+
+        _moduleTask = new Lazy<Task<IJSObjectReference>>(() => JsRuntime.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/CameraStreamer.razor.js").AsTask());
+
+        await _moduleTask.Value;
+        _isInitialized = true;
+    }
+
+    public async Task StartAsync()
+    {
+        if (_moduleTask != null)
+        {
+            var module = await _moduleTask.Value;
+            await module.InvokeVoidAsync("start", _videoRef, _canvasRef, DotNetObjectReference.Create(this), nameof(HandleOnFrameEvent));
+        }
+    }
+
+    public async Task StopAsync()
+    {
+        if (_moduleTask != null)
+        {
+            var module = await _moduleTask.Value;
+            await module.InvokeVoidAsync("stop", _videoRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isInitialized && _moduleTask is {IsValueCreated: true })
+        {
+            var module = await _moduleTask.Value;
+            await module.DisposeAsync();
+        }
+    }
+
+    /// <summary> Invokable method from javascript/typescript that calls the given callback method </summary>
+    /// <param name="data">Base64 string of the image</param>
+    [JSInvokable]
+    public async Task HandleOnFrameEvent(string data)
+    {
+        if (OnFrame.HasDelegate) await OnFrame.InvokeAsync(data);
+    }
+}

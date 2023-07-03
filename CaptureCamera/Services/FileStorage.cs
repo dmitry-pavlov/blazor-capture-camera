@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
@@ -94,6 +95,9 @@ public class FileStorage : IFileStorage
                     }
                 }
             }
+
+            parent.Files = parent.Files.OrderByDescending(x => x.FileName).ToList();
+            parent.Folders = parent.Folders.OrderBy(x => x.Name).ToList();
             return parent;
         }
         catch (Exception exception)
