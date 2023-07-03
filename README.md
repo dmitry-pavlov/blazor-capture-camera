@@ -9,9 +9,10 @@ Blazor Server app recording video from camera by capturing frames, storing them 
 
 ## Getting Started 
 
-- Open solution in Viisual Studio from git https://github.com/dmitry-pavlov/blazor-capture-camera and rebuild
+- Open solution in Visual Studio from git https://github.com/dmitry-pavlov/blazor-capture-camera and rebuild
 - Solution has Blazor Server project 'CaptureCamera' with 'CameraStreamer.razor' component wrapping up capturing from camera.
-- Make sure you started [Azurite Emulator](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite) before running app
+- Before running the app make sure you started [Azurite Emulator](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite) and created in local storage DocumentContainer `recordings` (as configured in `appsettings.json`)
 - Run project and try demo: 
 
+https://github.com/dmitry-pavlov/blazor-capture-camera/assets/1560778/28fbe490-4288-43ed-a828-71cb4d66d801
 
